@@ -78,6 +78,22 @@ jobs:
           sha256sum * > SHA256SUMS
           cat SHA256SUMS
 
+      # The release body comes from the changelog rather than from the commit
+      # list. Generated notes describe what changed in the repository; the
+      # changelog describes what changed for the person downloading it.
+      - name: Release notes
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > NOTES.md
+          if [ ! -s NOTES.md ]; then
+            echo "No changelog section for $version." > NOTES.md
+          fi
+          cat NOTES.md
+
       # Drafted rather than published: nothing signed and nothing notarized
       # should go out without a person looking at it first. Publishing is one
       # click in the Releases tab.
@@ -85,4 +101,5 @@ jobs:
         with:
           draft: true
           generate_release_notes: true
+          body_path: NOTES.md
           files: artifacts/*

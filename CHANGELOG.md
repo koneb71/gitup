@@ -5,9 +5,16 @@ Notable changes to Gitup. The format follows
 [semantic versioning](https://semver.org/spec/v2.0.0.html) — with the usual
 pre-1.0 caveat that the interface may still change between minor versions.
 
-## [Unreleased]
+## [0.1.0] — first public release
 
-### Added
+A complete Git client: commit graph with lane assignment, diff viewer with
+syntax highlighting and word-level intra-line diff, blame, file history and
+search, staging by file, hunk, or line, commit and amend, branches, tags and
+stashes, fetch/pull/push/clone, merge, cherry-pick, revert and reset, a
+three-way conflict editor, interactive rebase, submodules, Git LFS awareness,
+multiple repositories in tabs, a command palette, and remappable key bindings.
+
+### Notable
 
 - **Staging from the keyboard.** Arrow keys move through whichever list has
   focus, `→`/`←` step between history and the changed files, and `Space` stages
@@ -39,57 +46,31 @@ pre-1.0 caveat that the interface may still change between minor versions.
 - Documentation in [docs/](docs/README.md), with tests that check the reference
   tables still match the code.
 
-### Fixed
+### Decisions worth knowing
 
-- **The tab bar looked like a spreadsheet.** Every tab was given an equal share
-  of the bar and separated by a full-height rule, so a repository called `cap3`
-  took exactly as much room as `DevCapBackend`. Tabs are sized to their labels
-  now, the rules are gone, and the active tab is rounded into the content it is
-  showing.
-- **The search box was two controls.** Choosing what to search and typing what
-  to search for sat side by side as separate rounded pills; they are one field
-  now, with the selector inside it.
-- **The staging diff pane was cramped.** In the default 1280x820 window the
-  diff body got 172px — ten lines — because the detail pane paid for two header
-  bands and the commit box out of its own share rather than the window's. It
-  now gets 294px, seventeen lines, and grows with the window instead of handing
-  every extra pixel to the commit graph.
-- Panel sizes were never written anywhere, and egui keeps them in memory only,
-  so a resized split reverted on every launch — the sidebar width had the same
-  problem, being written to settings on every frame but only flushed by
-  unrelated saves. Dragged sizes are now stored when the drag ends.
-- The arrow keys drove the commit graph whatever the user was doing, so
-  pressing Down while picking through changed files threw them back into
-  history and lost their place.
-- Empty states asked for the impossible: a repository with no commits showed
-  "Select a commit" in a pane with nothing to select, and the status bar
-  reported "Idle" — a description of the application to itself.
-- Shortcut labels came from hardcoded strings and had drifted: the theme button
-  advertised Pull's chord. Every label now comes from the keymap, so it follows
-  remapping too.
-- Cancelling the folder picker left the app believing a dialog was still open,
-  silently ignoring every later attempt to open a repository.
-- A repository that failed to open cleared the loading state of whichever tab
-  was visible, leaving the tab that actually failed skeletal and empty.
-- The settings sheet had no scroll area, so it was clipped at the top and bottom
-  once its contents outgrew the window — with no way to reach what was cut off.
-- Counts spelled their own plurals at seven separate call sites, which is seven
-  chances to render "1 files". They now go through one helper.
-- Button heights had drifted to five values for three roles — a 20px Reset
-  beside a 22px Stage all, a 26px Commit beside a 28px Done. The roles are named
-  tokens now.
-- Refreshing a repository kept the old staged and unstaged diffs unless the
-  caller remembered to drop them, so a refresh could show a diff of a state the
-  repository was no longer in. Dropping them is part of refreshing now.
-- Graph growth could stop permanently: a superseded or failed walk never cleared
-  the flag that guarded it, so scrolling past the end of history stopped loading
-  more.
+Arrived at by measurement, and recorded because the reasoning is the part that
+gets lost.
 
-## [0.1.0]
-
-First release. A complete Git client: commit graph with lane assignment, diff
-viewer with syntax highlighting and word-level intra-line diff, blame, file
-history and search, staging by file, hunk, or line, commit and amend, branches,
-tags and stashes, fetch/pull/push/clone, merge, cherry-pick, revert and reset, a
-three-way conflict editor, interactive rebase, submodules, Git LFS awareness,
-multiple repositories in tabs, a command palette, and remappable key bindings.
+- **The centre split is a share, not a height.** The detail pane pays for two
+  header bands and the commit box out of its own allowance, so a plain 66% of
+  the centre leaves the diff 301px at 1280x820 but only 129px at the 880x560
+  minimum. The share is therefore taken of the *usable* centre, past that fixed
+  furniture, and the diff grows with the window rather than handing every extra
+  pixel to the commit graph. `src/ui/layout.rs` holds the arithmetic and its
+  tests.
+- **Dragged layout sizes are written to settings.** egui keeps panel sizes in
+  memory only and eframe's persistence feature is off, so nothing survives a
+  restart on its own. Sizes are flushed when the drag ends, not during it.
+- **Tabs are sized to their labels.** An equal share of the bar is what a
+  spreadsheet's column headers look like — `cap3` would take exactly as much
+  room as `DevCapBackend`.
+- **Arrow keys move whichever list has focus.** Driving the commit graph
+  unconditionally means Down throws you out of the file list you are working
+  in. The list holding the keys shows a bright marker while the other dims.
+- **Every advertised shortcut comes from the keymap.** Written as literals they
+  are both macOS-only and free to drift from the binding they name.
+- **Counts and button heights go through single definitions.** Seven call sites
+  spelling their own plurals is seven chances to render "1 files"; five button
+  heights for three roles is drift nobody can see in any one file.
+- **Disabled controls say why.** A greyed-out button with no explanation is
+  indistinguishable from a broken one, which is how it gets reported.
