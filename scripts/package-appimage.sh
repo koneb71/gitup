@@ -21,13 +21,20 @@ cd "$ROOT"
 
 VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
 TARGET_DIR="${CARGO_TARGET_DIR:-target}"
+# Made absolute once, here, rather than at each use. These scripts change
+# directory — dpkg-shlibdeps insists on being run from its own working tree —
+# and a relative path silently stops resolving the moment they do. It is also
+# invisible to anyone whose CARGO_TARGET_DIR happens to be absolute, which is
+# how it reached CI: every local test set one, and the runner does not.
+case "$TARGET_DIR" in /*) ;; *) TARGET_DIR="$ROOT/$TARGET_DIR" ;; esac
 ARCH="$(uname -m)"
 APPDIR="$TARGET_DIR/Gitup.AppDir"
 
 TOOL="${APPIMAGETOOL:-$(command -v appimagetool || true)}"
+# Exit 2 for "not installed", so the caller can tell that apart from a failure.
 if [[ -z "$TOOL" ]]; then
   echo "==> appimagetool not found; skipping the AppImage" >&2
-  exit 1
+  exit 2
 fi
 
 echo "==> Assembling $APPDIR"

@@ -21,6 +21,12 @@ cd "$ROOT"
 APP_NAME="Gitup"
 VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
 TARGET_DIR="${CARGO_TARGET_DIR:-target}"
+# Made absolute once, here, rather than at each use. These scripts change
+# directory — dpkg-shlibdeps insists on being run from its own working tree —
+# and a relative path silently stops resolving the moment they do. It is also
+# invisible to anyone whose CARGO_TARGET_DIR happens to be absolute, which is
+# how it reached CI: every local test set one, and the runner does not.
+case "$TARGET_DIR" in /*) ;; *) TARGET_DIR="$ROOT/$TARGET_DIR" ;; esac
 ARCH="$(uname -m)"
 STAGE_NAME="gitup-$VERSION-linux-$ARCH"
 STAGE="$TARGET_DIR/$STAGE_NAME"
@@ -97,8 +103,23 @@ echo "==> Built $TARBALL ($(du -sh "$TARBALL" | cut -f1))"
 
 # The same staged tree feeds every format, so the three cannot disagree about
 # what a Gitup installation contains.
-"$ROOT/scripts/package-deb.sh" "$STAGE" || echo "    (.deb skipped)"
-"$ROOT/scripts/package-appimage.sh" "$STAGE" || echo "    (AppImage skipped)"
+#
+# Exit 2 from either means the tool is not installed, which is fine on a
+# developer machine. Anything else is a real failure and stops the run: a
+# release that silently shipped without its .deb is how this rule was learned.
+package_with() {
+  local script="$1"
+  "$ROOT/scripts/$script" "$STAGE" && return 0
+  local status=$?
+  if [[ $status -eq 2 ]]; then
+    return 0
+  fi
+  echo "==> $script failed (exit $status)" >&2
+  exit $status
+}
+
+package_with package-deb.sh
+package_with package-appimage.sh
 
 if [[ "${1:-}" == "--install" ]]; then
   "$STAGE/install.sh"

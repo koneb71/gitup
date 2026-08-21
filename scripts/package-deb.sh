@@ -18,13 +18,23 @@ STAGE="${1:?usage: package-deb.sh <staged-directory>}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-if ! command -v dpkg-deb >/dev/null 2>&1; then
-  echo "==> dpkg-deb not found; skipping the .deb" >&2
-  exit 1
+# Exit 2 means "the tool is not here, carry on without me"; any other non-zero
+# means something went wrong and the caller must not paper over it. The two
+# were indistinguishable before, so a broken .deb build looked exactly like a
+# machine that simply had no dpkg.
+if ! command -v dpkg-deb >/dev/null 2>&1 || ! command -v dpkg-shlibdeps >/dev/null 2>&1; then
+  echo "==> dpkg-deb/dpkg-shlibdeps not found; skipping the .deb" >&2
+  exit 2
 fi
 
 VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
 TARGET_DIR="${CARGO_TARGET_DIR:-target}"
+# Made absolute once, here, rather than at each use. These scripts change
+# directory — dpkg-shlibdeps insists on being run from its own working tree —
+# and a relative path silently stops resolving the moment they do. It is also
+# invisible to anyone whose CARGO_TARGET_DIR happens to be absolute, which is
+# how it reached CI: every local test set one, and the runner does not.
+case "$TARGET_DIR" in /*) ;; *) TARGET_DIR="$ROOT/$TARGET_DIR" ;; esac
 # Debian's own architecture names, which are not uname's.
 ARCH="$(dpkg --print-architecture)"
 ROOTFS="$TARGET_DIR/deb/gitup_${VERSION}_${ARCH}"
@@ -98,14 +108,19 @@ rm -rf "$DEPWORK"
 mkdir -p "$DEPWORK/debian"
 printf 'Source: gitup\n\nPackage: gitup\nArchitecture: any\n' > "$DEPWORK/debian/control"
 
-DEPENDS="$(cd "$DEPWORK" && dpkg-shlibdeps -O --ignore-missing-info \
-  "$ROOTFS/usr/bin/gitup" 2>/dev/null | sed 's/^shlibs:Depends=//')"
-rm -rf "$DEPWORK"
+# stderr is kept: when this fails, the reason is the only useful thing there
+# is, and throwing it away is what made the first CI failure a mystery.
+SHLIBDEPS_LOG="$DEPWORK/stderr.log"
+DEPENDS="$( (cd "$DEPWORK" && dpkg-shlibdeps -O --ignore-missing-info \
+  "$ROOTFS/usr/bin/gitup" 2>"$SHLIBDEPS_LOG") | sed 's/^shlibs:Depends=//')"
 
 if [[ -z "$DEPENDS" ]]; then
-  echo "==> dpkg-shlibdeps produced nothing; refusing to guess" >&2
+  echo "==> dpkg-shlibdeps produced nothing; refusing to guess a Depends line" >&2
+  sed 's/^/    /' "$SHLIBDEPS_LOG" >&2 || true
+  rm -rf "$DEPWORK"
   exit 1
 fi
+rm -rf "$DEPWORK"
 echo "Depends: $DEPENDS" >> "$ROOTFS/DEBIAN/control"
 echo "    $DEPENDS"
 
