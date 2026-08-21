@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/koneb71/gitup/discussions
+    about: For anything that is not yet a bug report or a concrete request.
+  - name: Security vulnerabilities
+    url: https://github.com/koneb71/gitup/security/advisories/new
+    about: Please report these privately rather than as a public issue.

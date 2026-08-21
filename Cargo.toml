@@ -1,0 +1,83 @@
+[package]
+name = "gitup"
+version = "0.1.0"
+edition = "2021"
+description = "A modern graphical Git client for macOS, Linux, and Windows"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/koneb71/gitup"
+homepage = "https://github.com/koneb71/gitup"
+documentation = "https://github.com/koneb71/gitup/tree/main/docs"
+keywords = ["git", "gui", "vcs", "diff", "egui"]
+categories = ["development-tools", "gui"]
+# egui and eframe 0.36 set the floor; nothing here needs anything newer.
+rust-version = "1.95"
+exclude = ["/.github", "/docs", "/tests/snapshots", "/scripts/docker"]
+
+[dependencies]
+# GUI
+eframe = "0.36"
+egui = "0.36"
+egui_extras = { version = "0.36", features = ["image"] }
+egui_tiles = "0.17"
+
+# Git
+git2 = "0.21"
+
+# Concurrency
+crossbeam-channel = "0.5"
+rayon = "1"
+
+# Filesystem watching
+notify = "8.2"
+notify-debouncer-full = "0.7"
+
+# Diff / syntax
+syntect = { version = "5.3", default-features = false, features = ["default-fancy"] }
+two-face = { version = "0.5", default-features = false, features = ["syntect-fancy"] }
+similar = "3"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "bmp", "webp"] }
+
+# Platform integration
+rfd = "0.17"
+arboard = "3"
+open = "5"
+
+# Errors / logging
+anyhow = "1"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Config / util
+serde = { version = "1", features = ["derive"] }
+toml = "0.9"
+directories = "6"
+memchr = "2"
+globset = "0.4"
+humansize = "2"
+unicode-segmentation = "1"
+
+[build-dependencies]
+# Embeds the icon and version metadata into the Windows executable. Declared
+# unconditionally because build-dependency `cfg()` is evaluated against the
+# host, which is wrong when cross-compiling to Windows; build.rs checks the
+# target instead and does nothing elsewhere.
+winresource = "0.1"
+
+[dev-dependencies]
+tempfile = "3"
+git2 = "0.21"
+image = { version = "0.25", default-features = false, features = ["png"] }
+egui_kittest = { version = "0.36", features = ["wgpu", "snapshot", "eframe"] }
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

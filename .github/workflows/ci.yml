@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  # A failing build should not also cost a long incremental-compilation step.
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  # Formatting and lints are host-independent, so they run once rather than
+  # three times. Failing fast here keeps the matrix from burning ten minutes on
+  # a missing newline.
+  lint:
+    name: Format and lints
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends
+          build-essential pkg-config cmake libgtk-3-dev libssl-dev libx11-dev
+          libxcursor-dev libxrandr-dev libxi-dev libxkbcommon-dev libwayland-dev
+          libgl1-mesa-dev
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+      # `-D warnings` goes on the clippy invocation rather than in RUSTFLAGS:
+      # set globally it applies to every dependency too, so one upstream crate
+      # warning on a new compiler would fail CI for reasons nobody here can fix.
+      - name: cargo clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+  test:
+    name: Test on ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # One platform failing is worth knowing about on the others too: a
+      # cancelled matrix hides whether the break is platform-specific.
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Linux, os: ubuntu-latest }
+          - { name: macOS, os: macos-latest }
+          - { name: Windows, os: windows-latest }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends
+          build-essential pkg-config cmake libgtk-3-dev libssl-dev libx11-dev
+          libxcursor-dev libxrandr-dev libxi-dev libxkbcommon-dev libwayland-dev
+          libgl1-mesa-dev
+
+      # The tests create repositories with libgit2 and drive the real git
+      # binary. Both refuse to work without an identity, and Windows runners
+      # have no global config at all.
+      - name: Configure git
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@example.com"
+          git config --global init.defaultBranch main
+
+      - name: Build
+        run: cargo build --locked --all-targets
+
+      # Snapshot tests compare rendered pixels and only run on macOS; see the
+      # header of tests/ui_snapshots.rs. Every other test runs everywhere.
+      - name: Test
+        run: cargo test --locked
+
+      - name: Upload snapshot diffs
+        if: failure() && runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-diffs
+          path: tests/snapshots/*.diff.png
+          if-no-files-found: ignore
+
+  # Proves the release profile links on every platform, which the debug build
+  # does not: LTO and symbol stripping have their own ways to fail.
+  package:
+    name: Package for ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Linux, os: ubuntu-latest }
+          - { name: macOS, os: macos-latest }
+          - { name: Windows, os: windows-latest }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends
+          build-essential pkg-config cmake libgtk-3-dev libssl-dev libx11-dev
+          libxcursor-dev libxrandr-dev libxi-dev libxkbcommon-dev libwayland-dev
+          libgl1-mesa-dev
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: ./scripts/package-linux.sh
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: ./scripts/package-macos.sh --dmg
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        run: ./scripts/package-windows.ps1
+        shell: pwsh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gitup-${{ matrix.name }}
+          path: |
+            target/*.tar.gz
+            target/*.dmg
+            target/*.zip
+          if-no-files-found: error

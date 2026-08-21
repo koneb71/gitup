@@ -1,0 +1,4 @@
+# Defaults, pinned explicitly so a future rustfmt release cannot quietly
+# restyle the whole tree. CI enforces this with `cargo fmt --check`.
+edition = "2021"
+max_width = 100

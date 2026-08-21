@@ -1,0 +1,26 @@
+# Builds and tests Gitup on Linux, for developing on a machine that isn't one.
+#
+# The package list here is the authoritative answer to "what do I need to build
+# this on Debian or Ubuntu" — docs/building.md quotes it, and CI installs the
+# same set, so all three stay honest by being the same list.
+FROM rust:1-bookworm
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    pkg-config \
+    cmake \
+    git \
+    libgtk-3-dev \
+    libssl-dev \
+    libx11-dev \
+    libxcursor-dev \
+    libxrandr-dev \
+    libxi-dev \
+    libxkbcommon-dev \
+    libwayland-dev \
+    libgl1-mesa-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN rustup component add rustfmt clippy
+
+WORKDIR /src

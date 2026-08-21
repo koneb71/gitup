@@ -1,0 +1,70 @@
+name: Bug report
+description: Something in Gitup behaves wrongly
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this.
+
+        If the bug involves a repository you cannot share, that is fine — a
+        description of its shape (how many commits, whether a merge or a
+        rebase was in progress, what the working tree looked like) is usually
+        enough to reproduce it.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, and what Gitup did instead of what you expected.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a repository with …
+        2. Click …
+        3. …
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Gitup version
+      description: |
+        Settings → About. From a terminal, `gitup --version` also works —
+        except on Windows, where a GUI build has no console to print to.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+    validations:
+      required: true
+
+  - type: input
+    id: git-version
+    attributes:
+      label: git version
+      description: "`git --version`. Gitup calls the real git for anything on the network."
+      placeholder: "git version 2.50.0"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log output
+      description: |
+        Run with `GITUP_LOG=gitup=debug` and paste anything relevant. This is
+        automatically formatted as code, so no backticks are needed.
+      render: shell
