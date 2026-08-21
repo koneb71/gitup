@@ -5,6 +5,50 @@ Notable changes to Gitup. The format follows
 [semantic versioning](https://semver.org/spec/v2.0.0.html) — with the usual
 pre-1.0 caveat that the interface may still change between minor versions.
 
+## [0.1.1]
+
+Installers, where 0.1.0 shipped only archives.
+
+### Added
+
+- **A Windows installer**, `gitup-<version>-windows-x86_64-setup.exe`. Installs
+  per-user by default so no administrator prompt is needed, adds a Start Menu
+  entry and an optional desktop shortcut, and registers an uninstaller in
+  Add/Remove Programs. It notices when Git for Windows is absent and says so,
+  rather than leaving you to discover it at the first pull. A portable `.zip`
+  is still published alongside it.
+- **A Debian package**, `gitup_<version>_<arch>.deb`, for Debian, Ubuntu and
+  derivatives. Its dependencies come from `dpkg-shlibdeps` rather than being
+  written by hand, so the version constraints say which releases the binary
+  will actually run on. Carries a man page and a changelog, and is lintian
+  clean.
+- **An AppImage**, for the distributions that have no package: one executable
+  file, no root, no package manager.
+
+The macOS `.dmg` was already the platform's installer and is unchanged.
+
+### Fixed
+
+- **The documented Linux build dependencies were wrong.** Seven `-dev` packages
+  were listed and installed — GTK, X11, Wayland, OpenSSL, Mesa — and none are
+  needed. libgit2 is vendored with its own zlib and crypto, `rfd` talks to the
+  XDG desktop portal over DBus rather than linking GTK, and winit and wgpu open
+  X11, Wayland and the graphics drivers at runtime. `ldd` on the binary names
+  only libc, libgcc, libm and libz, and the full suite passes in an image
+  carrying just `build-essential`, `pkg-config`, `cmake` and `git`.
+
+  The test that guarded this compared the documented list against the
+  Dockerfile, so both being wrong together passed it. Build and run are
+  different lists, and [docs/building.md](docs/building.md) now gives both —
+  the runtime one being what a package has to declare.
+- A release created by the workflow is now held as a draft. `draft: true` only
+  applies when the action *creates* the release; an existing one is updated in
+  place with its draft state untouched, which is how 0.1.0 went out published
+  when it was meant to be reviewed first.
+- Test fixtures pin `core.autocrlf`. Git for Windows defaults it to true, so a
+  fixture file written as `"a\n"` came back from a checkout as `"a\r\n"` and
+  any test comparing file contents byte for byte failed there and only there.
+
 ## [0.1.0] — first public release
 
 A complete Git client: commit graph with lane assignment, diff viewer with
