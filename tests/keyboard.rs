@@ -19,7 +19,9 @@ fn harness(repo: PathBuf) -> Harness<'static, GitupApp> {
     let settings = Settings::ephemeral();
     Harness::builder()
         .with_size(egui::vec2(1280.0, 820.0))
-        .wgpu()
+        // No `.wgpu()`: these read state rather than pixels, and asking for a
+        // GPU backend they never use makes them slower and needlessly fragile
+        // on machines without one — CI runners included.
         .build_eframe(move |cc| GitupApp::new_with(cc, settings, Some(repo)))
 }
 

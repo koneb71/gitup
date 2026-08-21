@@ -28,7 +28,9 @@ fn diff_body(size: (f32, f32), settings: Settings) -> f32 {
 
     let mut harness = Harness::builder()
         .with_size(egui::vec2(size.0, size.1))
-        .wgpu()
+        // No `.wgpu()`: these read state rather than pixels, and asking for a
+        // GPU backend they never use makes them slower and needlessly fragile
+        // on machines without one — CI runners included.
         .build_eframe(move |cc| GitupApp::new_with(cc, settings, Some(repo)));
 
     for _ in 0..40 {
