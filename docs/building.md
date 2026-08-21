@@ -29,43 +29,38 @@ GUI build has no console to print to.
 
 ## Linux
 
-The system libraries are the only fiddly part. On Debian or Ubuntu:
+Build dependencies are short, because the binary links almost nothing:
 
 ```sh
-sudo apt-get install build-essential pkg-config cmake libgtk-3-dev libssl-dev \
-  libx11-dev libxcursor-dev libxrandr-dev libxi-dev libxkbcommon-dev \
-  libwayland-dev libgl1-mesa-dev
+sudo apt-get install build-essential pkg-config cmake
 ```
 
-On Fedora:
+On Fedora: `sudo dnf install gcc gcc-c++ pkgconf-pkg-config cmake`.
+On Arch: `sudo pacman -S base-devel pkgconf cmake`.
 
-```sh
-sudo dnf install gcc gcc-c++ pkgconf-pkg-config cmake gtk3-devel openssl-devel \
-  libX11-devel libXcursor-devel libXrandr-devel libXi-devel libxkbcommon-devel \
-  wayland-devel mesa-libGL-devel
-```
-
-On Arch:
-
-```sh
-sudo pacman -S base-devel pkgconf cmake gtk3 openssl libx11 libxcursor \
-  libxrandr libxi libxkbcommon wayland mesa
-```
-
-What each group is for:
-
-| Package group | Needed by |
-|---|---|
-| `build-essential`, `pkg-config`, `cmake` | compiling the vendored libgit2 |
-| `libgtk-3-dev` | `rfd`, which draws the native folder picker |
-| `libssl-dev` | libgit2's HTTPS support |
-| X11 and `libxkbcommon` | window creation and keyboard layout handling |
-| `libwayland-dev` | the Wayland backend |
-| `libgl1-mesa-dev` | `wgpu`'s GL fallback, used when Vulkan is unavailable |
+That is genuinely the whole list. `ldd` on the result names only libc, libgcc,
+libm and libz. libgit2 is vendored with its own zlib and crypto, so there is no
+OpenSSL dependency; `rfd` talks to the XDG desktop portal over DBus rather than
+linking GTK; and winit and wgpu open X11, Wayland and the graphics drivers at
+runtime instead of linking them.
 
 The authoritative list is [`scripts/docker/Dockerfile.linux`](../scripts/docker/Dockerfile.linux),
-which CI and the container build both use — if the table above drifts, trust the
-Dockerfile.
+which CI and the container build both use.
+
+### What it needs to *run*
+
+Different list, and the one that matters to someone installing a package:
+
+| Needed for | Provided by |
+|---|---|
+| the window | X11 or Wayland — any desktop session has one |
+| rendering | a Vulkan or GL driver, e.g. Mesa |
+| the folder picker | `xdg-desktop-portal` and a backend for your desktop |
+| fetch, pull, push, clone | `git` |
+
+The `.deb` declares the first two through the libraries the binary links, and
+recommends `git` and `xdg-desktop-portal`. Without a portal backend installed
+the file picker cannot open, though everything else works.
 
 ### Packaging
 
@@ -73,18 +68,20 @@ Dockerfile.
 scripts/package-linux.sh
 ```
 
-Produces `target/gitup-<version>-linux-<arch>.tar.gz` containing the binary, a
-`.desktop` entry, hicolor icons, and an `install.sh` that copies them under a
-prefix (`~/.local` by default, which needs no root):
+Produces three things in `target/`:
 
-```sh
-tar xzf gitup-0.1.0-linux-x86_64.tar.gz
-./gitup-0.1.0-linux-x86_64/install.sh
-```
+- **`gitup_<version>_<arch>.deb`** — for Debian, Ubuntu and derivatives.
+  `sudo apt install ./gitup_0.1.0_amd64.deb`.
+- **`Gitup-<version>-<arch>.AppImage`** — for everything else. `chmod +x` and
+  run it; no installation, no root. Needs `appimagetool` at build time, and is
+  skipped with a message when that is absent.
+- **`gitup-<version>-linux-<arch>.tar.gz`** — the binary, a `.desktop` entry,
+  hicolor icons, and an `install.sh` that copies them under a prefix
+  (`~/.local` by default, which needs no root).
 
-A tarball rather than a `.deb` or `.rpm` on purpose: those bind the result to
-one distribution's packaging policy, and a tarball works everywhere. Distro
-packages are welcome as separate contributions.
+The `.deb` is built with plain `dpkg-deb`; its dependencies come from
+`dpkg-shlibdeps` rather than being written by hand, so the version constraints
+say which releases the binary will actually run on.
 
 ### Building on a machine that is not Linux
 
@@ -136,12 +133,22 @@ cargo run --release
 .\scripts\package-windows.ps1
 ```
 
-Produces `target\gitup-<version>-windows-<arch>.zip` containing `gitup.exe` and
-the licence. It is portable: unzip anywhere and run it.
+Produces two things in `target\`:
 
-There is no MSI. An installer is worth having when it is code-signed, and an
-unsigned one trips SmartScreen exactly like a bare `.exe` does while adding a
-build dependency on WiX.
+- **`gitup-<version>-windows-<arch>-setup.exe`** — an Inno Setup installer. It
+  installs per-user by default so no administrator prompt is needed, adds a
+  Start Menu entry and an optional desktop shortcut, and registers an
+  uninstaller in Add/Remove Programs. It also notices when Git for Windows is
+  absent and says so, rather than leaving you to find out at the first pull.
+- **`gitup-<version>-windows-<arch>.zip`** — the portable alternative. Unzip
+  anywhere and run it.
+
+Inno Setup rather than WiX: both are preinstalled on the GitHub Actions Windows
+runners, and Inno produces a friendlier wizard for what is a single
+self-contained binary. Locally, the installer step is skipped with a message
+when `ISCC.exe` is not found, so the zip is still produced.
+
+Neither is code-signed, so SmartScreen warns the first time either is run.
 
 ### Cross-compiling to Windows
 

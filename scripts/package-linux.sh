@@ -95,6 +95,11 @@ rm -f "$TARBALL"
 tar -czf "$TARBALL" -C "$TARGET_DIR" "$STAGE_NAME"
 echo "==> Built $TARBALL ($(du -sh "$TARBALL" | cut -f1))"
 
+# The same staged tree feeds every format, so the three cannot disagree about
+# what a Gitup installation contains.
+"$ROOT/scripts/package-deb.sh" "$STAGE" || echo "    (.deb skipped)"
+"$ROOT/scripts/package-appimage.sh" "$STAGE" || echo "    (AppImage skipped)"
+
 if [[ "${1:-}" == "--install" ]]; then
   "$STAGE/install.sh"
 else

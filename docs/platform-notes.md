@@ -34,9 +34,11 @@ platform, so a config copied from a Mac to a PC keeps working.
   `CREATE_NO_WINDOW` — otherwise each fetch would flash a black box over the
   interface. Debug builds keep the console, so `GITUP_LOG` output is visible
   while developing.
-- **SmartScreen warns on first run**, because the executable is not
-  code-signed. "More info" then "Run anyway" gets past it. Signing needs a
-  certificate, which is a decision for whoever ships releases.
+- **SmartScreen warns on first run** of the installer and of the executable,
+  because neither is code-signed. "More info" then "Run anyway" gets past it.
+  Signing needs a certificate, which is a decision for whoever ships releases.
+- **The installer does not need administrator rights.** It installs per-user by
+  default; a machine-wide install is offered for anyone who wants one.
 - **Long paths.** Repositories with deeply nested paths need long path support
   enabled in both Windows and Git (`git config --global core.longpaths true`).
   Gitup inherits whatever git is configured to do.
@@ -60,9 +62,9 @@ platform, so a config copied from a Mac to a PC keeps working.
   lists them per distribution.
 - **Wayland and X11** both work. eframe picks Wayland when it is available and
   falls back to X11.
-- **The folder picker uses GTK 3** through `rfd`, which is why `libgtk-3-dev` is
-  a build dependency and a GTK 3 runtime is needed. On a desktop that is not
-  GTK-based the dialog still works; it just looks like a GTK dialog.
+- **Build dependencies are short**: a C toolchain, `pkg-config` and `cmake`.
+  The binary links only libc, libgcc, libm and libz — X11, Wayland and the
+  graphics drivers are opened at runtime rather than linked.
 - **Graphics.** Rendering goes through `wgpu`, which prefers Vulkan. If the
   window is black or the app exits at startup, there is no usable driver;
   `WGPU_BACKEND=gl` forces the GL path, and software rendering (`llvmpipe`,
@@ -70,9 +72,12 @@ platform, so a config copied from a Mac to a PC keeps working.
 - **The desktop entry** sets `StartupWMClass=dev.gitup.Gitup` to match the app
   id the window reports, so the running window associates with its launcher
   instead of appearing as a second, unnamed dock item.
-- **Distribution packages.** Releases ship a tarball with an `install.sh` rather
-  than a `.deb` or `.rpm`, because those bind the result to one distribution's
-  policy. Native packages are welcome as contributions.
+- **Distribution packages.** Releases ship a `.deb`, an AppImage and a tarball.
+  There is no `.rpm` or Flatpak yet; both are welcome as contributions.
+- **The folder picker needs a desktop portal.** `rfd` talks to
+  `xdg-desktop-portal` over DBus rather than linking GTK, so a system without
+  the portal and a backend for its desktop cannot open the file chooser, even
+  though everything else works. The `.deb` recommends them.
 
 ## Known limits, on every platform
 

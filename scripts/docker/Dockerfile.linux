@@ -3,6 +3,16 @@
 # The package list here is the authoritative answer to "what do I need to build
 # this on Debian or Ubuntu" — docs/building.md quotes it, and CI installs the
 # same set, so all three stay honest by being the same list.
+#
+# It is deliberately short. An earlier version installed GTK, X11, Wayland,
+# OpenSSL and Mesa development packages, none of which were needed: libgit2 is
+# vendored with its own zlib and crypto, `rfd` talks to the XDG desktop portal
+# over DBus rather than linking GTK, and winit and wgpu open X11, Wayland and
+# the graphics drivers at runtime instead of linking them. `ldd` on the built
+# binary lists only libc, libgcc, libm and libz.
+#
+# Those libraries are still needed to *run* the application. Build and run are
+# different lists, and docs/building.md gives both.
 FROM rust:1-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -10,15 +20,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     cmake \
     git \
-    libgtk-3-dev \
-    libssl-dev \
-    libx11-dev \
-    libxcursor-dev \
-    libxrandr-dev \
-    libxi-dev \
-    libxkbcommon-dev \
-    libwayland-dev \
-    libgl1-mesa-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN rustup component add rustfmt clippy

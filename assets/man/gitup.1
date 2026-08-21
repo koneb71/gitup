@@ -1,0 +1,58 @@
+.TH GITUP 1 "2026" "Gitup" "User Commands"
+.SH NAME
+gitup \- graphical Git client
+.SH SYNOPSIS
+.B gitup
+.RI [ OPTIONS ]
+.RI [ PATH ]
+.SH DESCRIPTION
+.B Gitup
+is a graphical Git client: a commit graph with real lane assignment, diffs with
+syntax highlighting and word-level intra-line comparison, blame, file history
+and search, staging by file, hunk or individual line, branches, tags, stashes,
+merge, cherry-pick, revert, reset, a three-way conflict editor, interactive
+rebase, submodules, and several repositories open at once in tabs.
+.PP
+Local work is done through libgit2. Anything that touches the network runs the
+real
+.BR git (1)
+binary, so existing credential helpers, the SSH agent and the system keychain
+apply without configuration. Without
+.BR git (1)
+on
+.BR PATH ,
+fetch, pull, push and clone report that it is unavailable; everything local
+continues to work.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a usage message and exit.
+.TP
+.BR \-V ", " \-\-version
+Print the version and exit.
+.SH ARGUMENTS
+.TP
+.I PATH
+Repository to open. With no argument, the working directory is used when it is
+inside one \(em which is a convenience of launching from a terminal, and
+correctly finds nothing when launched from a desktop.
+.SH ENVIRONMENT
+.TP
+.B GITUP_LOG
+Log filter, for example
+.BR gitup=debug .
+Defaults to
+.BR warn,gitup=info .
+.TP
+.B GIT_CONFIG_GLOBAL
+Honoured as
+.BR git (1)
+honours it, so the identity Gitup reads and writes is the one git uses.
+.SH FILES
+.TP
+.I ~/.config/gitup/settings.toml
+Preferences, the recent-repository list, and key bindings.
+.SH SEE ALSO
+.BR git (1)
+.SH BUGS
+Report at https://github.com/koneb71/gitup/issues

@@ -91,6 +91,42 @@ Source and issues: https://github.com/koneb71/gitup
 
     $size = "{0:N1} MB" -f ((Get-Item $zip).Length / 1MB)
     Write-Host "==> Built $zip ($size)"
+
+    # The installer, when Inno Setup is available. It is preinstalled on the
+    # GitHub Actions Windows runners; locally it is skipped rather than failing
+    # the whole packaging run, so the zip is still produced on a machine that
+    # has never seen ISCC.
+    $iscc = Get-Command "ISCC.exe" -ErrorAction SilentlyContinue
+    if (-not $iscc) {
+        $candidates = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+        )
+        foreach ($candidate in $candidates) {
+            if (Test-Path $candidate) { $iscc = $candidate; break }
+        }
+    } else {
+        $iscc = $iscc.Source
+    }
+
+    if (-not $iscc) {
+        Write-Host "==> Inno Setup (ISCC.exe) not found; skipping the installer"
+        return
+    }
+
+    $setupName = "$name-setup"
+    Write-Host "==> Building $setupName.exe"
+    & $iscc `
+        "/DAppVersion=$version" `
+        "/DSourceExe=$((Resolve-Path $exe).Path)" `
+        "/DOutputDir=$((Resolve-Path $targetDir).Path)" `
+        "/DOutputName=$setupName" `
+        "assets\windows\gitup.iss"
+    if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
+
+    $setup = Join-Path $targetDir "$setupName.exe"
+    $setupSize = "{0:N1} MB" -f ((Get-Item $setup).Length / 1MB)
+    Write-Host "==> Built $setup ($setupSize)"
 }
 finally {
     Pop-Location

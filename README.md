@@ -28,16 +28,25 @@ time. [docs/platform-notes.md](docs/platform-notes.md) has the details.
 **macOS** — download the `.dmg` from [Releases][releases], drag Gitup to
 Applications, then right-click → Open the first time.
 
-**Linux** — download the tarball from [Releases][releases]:
+**Windows** — download `gitup-*-windows-x86_64-setup.exe` from
+[Releases][releases] and run it. It installs per-user, so no administrator
+prompt. A portable `.zip` is there too if you prefer. You will also need
+[Git for Windows](https://git-scm.com/download/win).
+
+**Linux** — a `.deb` for Debian, Ubuntu and derivatives:
 
 ```sh
-tar xzf gitup-*-linux-x86_64.tar.gz
-./gitup-*-linux-x86_64/install.sh      # installs into ~/.local, no root needed
+sudo apt install ./gitup_0.1.0_amd64.deb
 ```
 
-**Windows** — download the zip from [Releases][releases] and unzip it anywhere.
-It is portable; run `gitup.exe`. You will also need
-[Git for Windows](https://git-scm.com/download/win).
+or an AppImage for everything else, which needs no installation and no root:
+
+```sh
+chmod +x Gitup-0.1.0-x86_64.AppImage && ./Gitup-0.1.0-x86_64.AppImage
+```
+
+A `.tar.gz` with an `install.sh` is also published, for installing under a
+prefix of your choosing.
 
 **From source** — a Rust toolchain, then `cargo run --release`. Linux needs a
 few `-dev` packages first; [docs/building.md](docs/building.md) lists them per
