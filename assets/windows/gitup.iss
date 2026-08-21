@@ -77,20 +77,21 @@ Filename: "{app}\gitup.exe"; Description: "{cm:LaunchProgram,Gitup}"; Flags: now
 [Code]
 // Gitup runs the real git binary for anything touching the network, so a
 // machine without it installs fine and then cannot fetch. Saying so during
-// setup is better than the user discovering it at the first pull.
+// setup beats the user discovering it at the first pull.
+//
+// Deliberately the smallest amount of Pascal Script that does the job: one
+// registry check and one single-line message. The first version of this
+// spanned several lines and relied on adjacent string literals joining, which
+// is a C habit and a compile error here — and the only way to find that out is
+// to run the compiler, which needs Windows. Code that cannot be checked
+// locally should be code with very little to check.
 function GitIsPresent(): Boolean;
-var
-  Found: String;
 begin
-  Result := RegQueryStringValue(HKLM, 'SOFTWARE\GitForWindows', 'InstallPath', Found)
-         or RegQueryStringValue(HKLM32, 'SOFTWARE\GitForWindows', 'InstallPath', Found);
+  Result := RegKeyExists(HKEY_LOCAL_MACHINE, 'SOFTWARE\GitForWindows');
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
-  if (CurStep = ssPostInstall) and not GitIsPresent() then
-    MsgBox('Gitup uses Git for Windows for fetch, pull, push and clone.' #13#13
-           'It was not found. Everything local will work without it; install '
-           'it from https://git-scm.com/download/win to enable the rest.',
-           mbInformation, MB_OK);
+  if (CurStep = ssPostInstall) and (not GitIsPresent()) then
+    MsgBox('Git for Windows was not found. Gitup uses it for fetch, pull, push and clone; everything local works without it. Install it from https://git-scm.com/download/win to enable the rest.', mbInformation, MB_OK);
 end;
