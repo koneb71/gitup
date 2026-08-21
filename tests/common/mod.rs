@@ -69,6 +69,13 @@ impl Fixture {
         let mut cfg = repo.config().expect("config");
         cfg.set_str("user.name", "Fixture").unwrap();
         cfg.set_str("user.email", "fixture@example.com").unwrap();
+        // Git for Windows defaults `core.autocrlf` to true, so a file written
+        // here as "a\n" and restored by a checkout comes back as "a\r\n" — and
+        // any test comparing file contents byte for byte fails there and only
+        // there. Fixtures pin it so the same bytes go in and come out on every
+        // platform. Gitup itself deliberately does not override this: line
+        // endings are git's business, and the app shows what git reports.
+        cfg.set_bool("core.autocrlf", false).unwrap();
         // A fixed initial branch keeps the branch chip stable regardless of the
         // machine's `init.defaultBranch`.
         repo.set_head("refs/heads/main").expect("set_head");
